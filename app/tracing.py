@@ -17,12 +17,20 @@ except ImportError:  # pragma: no cover - chỉ dùng khi chưa cài requirement
 
         return decorator
 
+    class _DummyObservation:
+        def update(self, **kwargs: Any) -> None:
+            return None
+
     class _DummyClient:
         def update_current_span(self, **kwargs: Any) -> None:
             return None
 
         def update_current_generation(self, **kwargs: Any) -> None:
             return None
+
+        @contextmanager
+        def start_as_current_observation(self, **kwargs: Any):
+            yield _DummyObservation()
 
     def get_client():
         return _DummyClient()
@@ -34,6 +42,16 @@ except ImportError:  # pragma: no cover - chỉ dùng khi chưa cài requirement
 
 def get_langfuse_client():
     return get_client()
+
+
+def start_observation(*, name: str, as_type: str = "span", **kwargs: Any):
+    """Open a child observation under the currently active one (SDK v4).
+
+    Used as ``with start_observation(...) as obs: ...; obs.update(...)``. The
+    parent is whatever observation is current in the OpenTelemetry context,
+    e.g. the ``@observe``-decorated ``lab-agent-run``.
+    """
+    return get_client().start_as_current_observation(name=name, as_type=as_type, **kwargs)
 
 
 def tracing_enabled() -> bool:

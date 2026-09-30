@@ -1,25 +1,41 @@
 alerts:
-  - name: TODO_alert_1
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: HighLatencyP95
+    severity: warning
+    condition: 'p95(response_sent.latency_ms) > 3000 over a 5m window'
+    duration: 5m
     type: symptom-based
+    sli: primary_slo fast_successful_requests (config/slo.yaml)
+    user_impact: Người dùng chờ lâu hơn 3 giây mới nhận câu trả lời; request chậm bị tính vào error budget.
     channel: slack
-    owner: TODO
+    slack_channel: '#k4-l3b-alerts'
+    owner: student-2A202602427
     runbook: docs/alerts.md#alert-1
-  - name: TODO_alert_2
-    severity: TODO
-    condition: TODO
-    duration: TODO
+
+  - name: HighErrorRateOrRetrievalFailure
+    severity: critical
+    condition: >-
+      (count(request_failed) / count(request_received) * 100 > 2
+      or count(tool_success == true) / count(tool_success != null) * 100 < 90)
+      over a 5m window with count(request_received) >= 10
+    duration: 5m
     type: symptom-based
+    sli: guardrails.error_rate_pct_max và guardrails.retrieval_success_rate_pct_min (config/slo.yaml)
+    user_impact: Người dùng nhận HTTP 500 hoặc câu trả lời thiếu context; mỗi request lỗi tiêu thẳng error budget.
     channel: slack
-    owner: TODO
+    slack_channel: '#k4-l3b-alerts'
+    owner: student-2A202602427
     runbook: docs/alerts.md#alert-2
-  - name: TODO_alert_3
-    severity: TODO
-    condition: TODO
-    duration: TODO
+
+  - name: CostPerRequestSpike
+    severity: warning
+    condition: >-
+      avg(response_sent.cost_usd) > 0.004 (khoảng 2 lần baseline 0.002 USD/request)
+      or sum(response_sent.cost_usd) over 1h * 24 > 2.5 (dự báo vượt ngân sách ngày)
+    duration: 15m
     type: symptom-based
+    sli: guardrails.daily_cost_usd_max (config/slo.yaml), panel cost + tokens
+    user_impact: Chi phí mỗi câu trả lời tăng dù traffic không tăng; nếu kéo dài sẽ vượt ngân sách ngày 2.5 USD.
     channel: slack
-    owner: TODO
+    slack_channel: '#k4-l3b-alerts'
+    owner: student-2A202602427
     runbook: docs/alerts.md#alert-3

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from structlog.contextvars import bind_contextvars
 
 from .agent import LabAgent
@@ -48,16 +49,27 @@ async def metrics() -> dict:
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: Request, body: ChatRequest) -> ChatResponse:
-    # TODO: Enrich logs with request context (user_id_hash, session_id, feature, model, env)
-    # bind_contextvars(...)
-    
+    # Request-wide context: every later log line of this request inherits it.
+    bind_contextvars(
+        user_id_hash=hash_user_id(body.user_id),
+        session_id=body.session_id,
+        feature=body.feature,
+        model=agent.model,
+        env=os.getenv("APP_ENV", "dev"),
+    )
+
     log.info(
         "request_received",
         service="api",
         payload={"message_preview": summarize_text(body.message)},
     )
     try:
-        result = agent.run(
+        # agent.run() is blocking (sleep/IO); run it in a worker thread so a slow
+        # request does not freeze the event loop and queue every other request.
+        # anyio copies contextvars into the thread: correlation_id and the trace
+        # context stay attached to this request.
+        result = await run_in_threadpool(
+            agent.run,
             user_id=body.user_id,
             feature=body.feature,
             session_id=body.session_id,

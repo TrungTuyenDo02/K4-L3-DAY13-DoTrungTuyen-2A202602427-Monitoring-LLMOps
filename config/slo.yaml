@@ -1,4 +1,5 @@
 service: day13-l3b-monitoring-llmops-lab
+owner: student-2A202602427
 primary_slo:
   name: fast_successful_requests
   window: 28d
@@ -7,9 +8,38 @@ primary_slo:
     total_event: 'event == "request_received"'
   target_percent: 99.5
   error_budget_percent: 0.5
-  note: Học viên phải giải thích hoặc điều chỉnh ngưỡng bằng baseline của mình. Ví dụ nếu có 10,000 request trong cửa sổ 28 ngày, error budget 0.5% nghĩa là tối đa 50 request được phép không đạt SLO.
+  note: >-
+    Giữ ngưỡng 3000 ms / 99.5%. Baseline sau CP1 (11 request trong data/logs.jsonl)
+    có latency P95 = 1257 ms, TTFT P95 = 50 ms, 0 request lỗi, nên 3000 ms chừa
+    khoảng 2.4 lần headroom so với P95 hiện tại, nên request bình thường không đốt budget.
+    Khi bật practice rag_slow (+2.5 s ở retrieval), latency_ms đo được ~2.66 s/request
+    (P95 2,657 ms, sát ngưỡng) và request lạnh (fetch prompt ~1 s) vượt ngưỡng (P99
+    3,609 ms), nên thành "bad". Request lỗi (request_failed) không có response_sent nên
+    cũng là "bad". Hạn chế: latency_ms đo bên trong agent, không gồm thời gian request
+    xếp hàng trước khi vào agent. Lần thử rag_slow đầu tiên client thấy 13–15 s vì /chat
+    chặn event loop; đã sửa bằng run_in_threadpool (client đo lại 2.67–2.69 s).
+  error_budget:
+    formula: 'bad_events_allowed = total_events * (100 - target_percent) / 100'
+    example: >-
+      Cửa sổ 28 ngày có 10,000 request thì error budget 0.5% = 50 request được phép
+      lỗi hoặc chậm hơn 3000 ms. Một lần load_test.py (10 request) mà có 1 request
+      chậm/lỗi đã tiêu 10% số request trong lần chạy đó, tức gấp 20 lần tốc độ cho phép.
+    burn_rate: >-
+      burn_rate = (bad_events / total_events) / 0.005. Burn rate 1 nghĩa là tiêu hết
+      budget đúng vào cuối 28 ngày; burn rate > 14.4 kéo dài 1 giờ nghĩa là tiêu khoảng 2%
+      budget/giờ và cần xử lý ngay (Alert 1 và Alert 2 là triệu chứng dẫn tới điều này).
+    policy: >-
+      Còn budget thì được deploy/đổi prompt bình thường. Hết budget thì dừng promote prompt
+      mới (giữ label production ở version ổn định) cho tới khi tìm ra root cause.
 guardrails:
   error_rate_pct_max: 2
   daily_cost_usd_max: 2.5
   quality_score_avg_min: 0.75
   retrieval_success_rate_pct_min: 90
+related_alerts:
+  - name: HighLatencyP95
+    runbook: docs/alerts.md#alert-1
+  - name: HighErrorRateOrRetrievalFailure
+    runbook: docs/alerts.md#alert-2
+  - name: CostPerRequestSpike
+    runbook: docs/alerts.md#alert-3
