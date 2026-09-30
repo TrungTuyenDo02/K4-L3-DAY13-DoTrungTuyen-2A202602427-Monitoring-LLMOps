@@ -8,7 +8,7 @@
 - **MSSV:** 2A202602427
 - **Lớp:** K4-L3B
 - **Repository URL:** https://github.com/TrungTuyenDo02/K4-L3-DAY13-DoTrungTuyen-2A202602427-Monitoring-LLMOps
-- **Commit SHA cuối:** *điền sau khi commit + push lần cuối (`git log -1 --oneline`)*
+- **Commit SHA cuối:** `71fd0a0ed179cbc7c3e941560aaed5c48ccedf65` (commit chứa toàn bộ source, config, evidence 02–14 và report; tests/validators chạy lại trên commit này — [01](evidence/01-pytest.png)). Commit ngay sau chỉ thêm ảnh 01 và dòng SHA này.
 - **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1` (Cohort K4, in ra bởi `load_test.py --challenge`)
 - **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602427`
 
