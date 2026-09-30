@@ -9,3 +9,5 @@ data/audit.jsonl
 config/challenge.json
 .pytest_cache/
 .antigravity/
+# Bản lưu log cục bộ (có thể chứa dữ liệu request), không nộp.
+/logs-*.jsonl
